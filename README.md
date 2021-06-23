@@ -1,5 +1,5 @@
-Installation
+# DAC
 
-1. conda create -n dac --file conda_requirements.txt
-2. pip install -r pip_requirements.txt
-3. pip install .
+Main repository for the paper 'Discriminative Attribution from Counterfactuals'.
+
+For installation instructions and additional resources to reproduce experimental results, see the corresponding [resource](https://dac-method.github.io).

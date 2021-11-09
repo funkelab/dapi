@@ -117,8 +117,10 @@ def get_attribution(real_img,
         gc_real = layer_gc.attribute(imgs[0], target=classes[0])
 
         gc_real = project_layer_activations_to_input_rescale(gc_real.cpu().detach().numpy(), (input_shape[0], input_shape[1]))
+        gc_real = np.stack([gc_real[0,0,:,:],] * channels, axis=0)
+        print(f"GC SHAPE {gc_real.shape}")
 
-        attrs.append(torch.tensor(gc_real[0,0,:,:]))
+        attrs.append(torch.tensor(gc_real))
         attrs_names.append("gc")
 
         gc_diff_0, gc_diff_1 = get_sgc(real_img, fake_img, real_class, 
@@ -131,7 +133,9 @@ def get_attribution(real_img,
         if bidirectional:
             gc_fake = layer_gc.attribute(imgs[1], target=classes[1])
             gc_fake = project_layer_activations_to_input_rescale(gc_fake.cpu().detach().numpy(), (input_shape[0], input_shape[1]))
-            attrs.append(torch.tensor(gc_fake[0,0,:,:]))
+            gc_fake = np.stack([gc_fake,] * channels, axis=0)
+
+            attrs.append(torch.tensor(gc_fake))
             attrs_names.append("gc_fake")
 
             attrs.append(gc_diff_1)
@@ -144,7 +148,8 @@ def get_attribution(real_img,
         # Real
         guided_gc = GuidedGradCam(net, last_conv)
         ggc_real = guided_gc.attribute(imgs[0], target=classes[0])
-        attrs.append(ggc_real[0,0,:,:])
+        attrs.append(ggc_real[0,:,:,:])
+        print(f"GGC shape {ggc_real.shape}")
         attrs_names.append("ggc")
 
         gc_diff_0, gc_diff_1 = get_sgc(real_img, fake_img, real_class, 
@@ -156,41 +161,41 @@ def get_attribution(real_img,
         net.zero_grad()
         gbp = GuidedBackprop(net)
         gbp_real = gbp.attribute(imgs[0], target=classes[0])
-        ggc_diff_0 = gbp_real[0,0,:,:] * gc_diff_0
+        ggc_diff_0 = gbp_real[0,:,:,:] * gc_diff_0
         attrs.append(ggc_diff_0)
         attrs_names.append("d_ggc")
 
         if bidirectional:
             ggc_fake = guided_gc.attribute(imgs[1], target=classes[1])
-            attrs.append(ggc_fake[0,0,:,:])
+            attrs.append(ggc_fake[0,:,:,:])
             attrs_names.append("ggc_fake")
 
             gbp_fake = gbp.attribute(imgs[1], target=classes[1])
-            ggc_diff_1 = gbp_fake[0,0,:,:] * gc_diff_1
+            ggc_diff_1 = gbp_fake[0,:,:,:] * gc_diff_1
             attrs.append(ggc_diff_1)
             attrs_names.append("d_ggc_inv")
 
     # IG
     if "ig" in methods:
-        baseline = image_to_tensor(np.zeros(input_shape, dtype=np.float32))
+        baseline = image_to_tensor(np.zeros(np.shape(real_img), dtype=np.float32))
         net.zero_grad()
         ig = IntegratedGradients(net)
         ig_real, delta_real = ig.attribute(imgs[0], baseline, target=classes[0], return_convergence_delta=True)
         ig_diff_1, delta_diff = ig.attribute(imgs[1], imgs[0], target=classes[1], return_convergence_delta=True)
 
-        attrs.append(ig_real[0,0,:,:])
+        attrs.append(ig_real[0,:,:,:])
         attrs_names.append("ig")
 
-        attrs.append(ig_diff_1[0,0,:,:])
+        attrs.append(ig_diff_1[0,:,:,:])
         attrs_names.append("d_ig")
 
         if bidirectional:
             ig_fake, delta_fake = ig.attribute(imgs[1], baseline, target=classes[1], return_convergence_delta=True)
-            attrs.append(ig_fake[0,0,:,:])
+            attrs.append(ig_fake[0,:,:,:])
             attrs_names.append("ig_fake")
 
             ig_diff_0, delta_diff = ig.attribute(imgs[0], imgs[1], target=classes[0], return_convergence_delta=True)
-            attrs.append(ig_diff_0[0,0,:,:])
+            attrs.append(ig_diff_0[0,:,:,:])
             attrs_names.append("d_ig_inv")
 
         
@@ -201,19 +206,19 @@ def get_attribution(real_img,
         dl_real = dl.attribute(imgs[0], target=classes[0])
         dl_diff_1 = dl.attribute(imgs[1], baselines=imgs[0], target=classes[1])
 
-        attrs.append(dl_real[0,0,:,:])
+        attrs.append(dl_real[0,:,:,:])
         attrs_names.append("dl")
 
-        attrs.append(dl_diff_1[0,0,:,:])
+        attrs.append(dl_diff_1[0,:,:,:])
         attrs_names.append("d_dl")
 
         if bidirectional:
             dl_fake = dl.attribute(imgs[1], target=classes[1])
-            attrs.append(dl_fake[0,0,:,:])
+            attrs.append(dl_fake[0,:,:,:])
             attrs_names.append("dl_fake")
 
             dl_diff_0 = dl.attribute(imgs[0], baselines=imgs[1], target=classes[0])
-            attrs.append(dl_diff_0[0,0,:,:])
+            attrs.append(dl_diff_0[0,:,:,:])
             attrs_names.append("d_dl_inv")
 
     # INGRAD
@@ -232,19 +237,19 @@ def get_attribution(real_img,
 
         ingrad_diff_0 = grads_fake * (imgs[0] - imgs[1])
    
-        attrs.append(torch.abs(ingrad_real[0,0,:,:]))
+        attrs.append(torch.abs(ingrad_real[0,:,:,:]))
         attrs_names.append("ingrad")
 
-        attrs.append(torch.abs(ingrad_diff_0[0,0,:,:]))
+        attrs.append(torch.abs(ingrad_diff_0[0,:,:,:]))
         attrs_names.append("d_ingrad")
 
         if bidirectional:
             ingrad_fake = input_x_gradient.attribute(imgs[1], target=classes[1])
-            attrs.append(torch.abs(ingrad_fake[0,0,:,:]))
+            attrs.append(torch.abs(ingrad_fake[0,:,:,:]))
             attrs_names.append("ingrad_fake")
 
             ingrad_diff_1 = grads_real * (imgs[1] - imgs[0])
-            attrs.append(torch.abs(ingrad_diff_1[0,0,:,:]))
+            attrs.append(torch.abs(ingrad_diff_1[0,:,:,:]))
             attrs_names.append("d_ingrad_inv")
 
     attrs = [a.detach().cpu().numpy() for a in attrs]

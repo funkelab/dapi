@@ -10,10 +10,11 @@ class Vgg2D(torch.nn.Module):
             output_classes=6):
 
         self.input_size = input_size
+        self.input_channels = input_channels
 
         super(Vgg2D, self).__init__()
 
-        current_fmaps = 1
+        current_fmaps = input_channels
         current_size = tuple(input_size)
 
         features = []
@@ -76,18 +77,7 @@ class Vgg2D(torch.nn.Module):
         print(self)
     
     def forward(self, raw):
-        shape = tuple(raw.shape)
-        if shape[1] != 1: #== (1, 3, 128, 128) - rgb conversion needed for captum.
-            raw = raw[:,0,:,:].reshape(shape[0],1,shape[2], shape[3])
-            
-        raw_with_channels = raw.reshape(
-            shape[0],
-            1,
-            shape[2],
-            shape[3])
-    
-        raw_with_channels = raw
-        f = self.features(raw_with_channels)
+        f = self.features(raw)
         f = f.view(f.size(0), -1)
         y = self.classifier(f)
         return y

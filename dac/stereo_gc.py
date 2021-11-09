@@ -35,9 +35,6 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
     """
 
 
-    if len(np.shape(fake_img)) != len(np.shape(real_img)) !=2:
-        raise ValueError("Input images need to be two dimensional")
-    
     imgs = [normalize_image(real_img), normalize_image(fake_img)]
     classes = [real_class, fake_class]
 
@@ -57,6 +54,8 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
                                 output_classes=output_classes, 
                                 downsample_factors=downsample_factors)
         grads.append(get_gradients_from_layer(grad_net, x, y, layer_name))
+
+    print(f"GRAD SHAPE {grads[0].shape}")
 
     acts_real = collections.defaultdict(list)
     acts_fake = collections.defaultdict(list)
@@ -93,5 +92,7 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
     gc_1 = np.abs(gc_1)
     gc_0 /= np.max(np.abs(gc_0))
     gc_1 /= np.max(np.abs(gc_1))
+    gc_0 = np.stack([gc_0,]*input_nc, axis=0)
+    gc_1 = np.stack([gc_1,]*input_nc, axis=0)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     return torch.tensor(gc_0, device=device), torch.tensor(gc_1, device=device)

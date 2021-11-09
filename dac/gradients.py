@@ -18,7 +18,6 @@ def get_gradients_from_layer(net, x, y, layer_name=None, normalize=False):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     xx = torch.tensor(x, device=device).unsqueeze(0)
     yy = torch.tensor([y], device=device)
-    xx = xx.unsqueeze(0)
     in_grads = []
     out_grads = []
     try:

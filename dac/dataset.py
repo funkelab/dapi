@@ -31,13 +31,30 @@ def parse_predictions(prediction_dir,
     fake_imgs = [f for f in files if f.endswith("fake.png")]
     pred_files = [f for f in files if f.endswith("aux.json")]
 
-    img_ids = [int(f.split("/")[-1].split("_")[0]) for f in real_imgs]
+    # try to get an integer id:
+    img_ids = []
+    for id_idx in range(len(real_imgs[0].split("/")[-1].split("_"))):
+        try:
+            img_ids = [int(f.split("/")[-1].split("_")[id_idx]) for f in real_imgs]
+            transform = lambda x: int(x)
+            no_numbers = False
+            break
+        except ValueError:
+            pass
+
+    #If that does not work use string and rename:
+    if not img_ids:
+        img_ids = [f.split("/")[-1].split("_")[0] for f in real_imgs]
+        id_idx = 0
+        transform = lambda x: x
+        no_numbers = True
+
 
     ids_to_data = {}
     for img_id in img_ids:
-        real = [f for f in real_imgs if img_id == int(f.split("/")[-1].split("_")[0])]
-        fake = [f for f in fake_imgs if img_id == int(f.split("/")[-1].split("_")[0])]
-        aux = [f for f in pred_files if img_id == int(f.split("/")[-1].split("_")[0])]
+        real = [f for f in real_imgs if img_id == transform(f.split("/")[-1].split("_")[id_idx])]
+        fake = [f for f in fake_imgs if img_id == transform(f.split("/")[-1].split("_")[id_idx])]
+        aux = [f for f in pred_files if img_id == transform(f.split("/")[-1].split("_")[id_idx])]
         assert(len(real) == 1)
         assert(len(fake) == 1)
         assert(len(aux) == 1)
@@ -48,7 +65,7 @@ def parse_predictions(prediction_dir,
         aux_data = json.load(open(aux, "r"))
         aux_real = aux_data["aux_real"][real_class]
         aux_fake = aux_data["aux_fake"][fake_class]
-        
+
         ids_to_data[img_id] = (real, fake, aux_real, aux_fake)
 
     return ids_to_data

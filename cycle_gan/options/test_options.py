@@ -26,7 +26,7 @@ class TestOptions(BaseOptions):
         parser.add_argument('--num_test', type=int, default=50, help='how many test images to run')
         parser.add_argument('--aux_checkpoint', type=str, help='AUX net checkpoint')
         parser.add_argument('--aux_input_size', type=int, default=128, help='AUX net input size')
-        parser.add_argument('--aux_net', type=str, default='vgg2d', help='AUX net architecture')
+        parser.add_argument('--aux_net', type=str, default='none', help='AUX net architecture')
         parser.add_argument('--aux_input_nc', type=int, default=1, help='AUX net input channels')
         parser.add_argument('--aux_output_classes', type=int, default=6, help='AUX number of output classes')
         parser.add_argument('--aux_downsample_factors', type=downsample_type, default=[(2,2), (2,2), (2,2), (2,2)], 

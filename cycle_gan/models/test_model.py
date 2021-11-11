@@ -48,12 +48,15 @@ class TestModel(BaseModel):
         self.netG = networks.define_G(opt.input_nc, opt.output_nc, opt.ngf, opt.netG,
                                       opt.norm, not opt.no_dropout, opt.init_type, opt.init_gain, self.gpu_ids)
 
-        self.netAUX = networks.define_AUX(checkpoint_path=opt.aux_checkpoint,
-                                          input_size=opt.aux_input_size,
-                                          aux_net=opt.aux_net,
-                                          input_nc=opt.aux_input_nc,
-                                          output_classes=opt.aux_output_classes,
-                                          downsample_factors=opt.aux_downsample_factors)
+        if opt.aux_net != "none":
+            self.netAUX = networks.define_AUX(checkpoint_path=opt.aux_checkpoint,
+                                              input_size=opt.aux_input_size,
+                                              aux_net=opt.aux_net,
+                                              input_nc=opt.aux_input_nc,
+                                              output_classes=opt.aux_output_classes,
+                                              downsample_factors=opt.aux_downsample_factors)
+        else:
+            self.netAUX = None
 
 
          # assigns the model to self.netG_[suffix] so that it can be loaded
@@ -74,8 +77,9 @@ class TestModel(BaseModel):
     def forward(self):
         """Run forward pass."""
         self.fake = self.netG(self.real)  # G(real)
-        self.aux_real = F.softmax(self.netAUX(self.real), dim=1)
-        self.aux_fake = F.softmax(self.netAUX(self.fake), dim=1)
+        if not self.netAUX is None:
+            self.aux_real = F.softmax(self.netAUX(self.real), dim=1)
+            self.aux_fake = F.softmax(self.netAUX(self.fake), dim=1)
 
     def optimize_parameters(self):
         """No optimization for test model."""

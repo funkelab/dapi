@@ -7,7 +7,7 @@ from dac_networks import run_inference, init_network
 
 def get_mask(attribution, real_img, fake_img, real_class, fake_class, 
              net_module, checkpoint_path, input_shape, input_nc, output_classes,
-             downsample_factors=None, sigma=11, struc=10):
+             downsample_factors=None, sigma=11, struc=10, channel_wise=False):
     """
     attribution: 2D array <= 1 indicating pixel importance
     """
@@ -38,7 +38,10 @@ def get_mask(attribution, real_img, fake_img, real_class, fake_class,
             copyto = copy.deepcopy(fake_img[c,:,:])
             copyto_ref = copy.deepcopy(fake_img[c,:,:])
             copied_canvas = np.zeros(np.shape(copyfrom))
-            mask = np.array(attribution[c,:,:] > thr, dtype=np.uint8)
+            if channel_wise:
+                mask = np.array(attribution[c,:,:] > thr, dtype=np.uint8)
+            else:
+                mask = np.array(np.any(attribution > thr, axis=0), dtype=np.uint8)
 
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE,(struc,struc))
             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)

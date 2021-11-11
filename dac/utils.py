@@ -2,6 +2,7 @@ import numpy as np
 import os
 from PIL import Image
 import torch
+import matplotlib.pyplot as plt
 
 def flatten_image(pil_image):
     """
@@ -19,6 +20,8 @@ def open_image(image_path, flatten=True, normalize=True):
     im = np.asarray(Image.open(image_path))
     if flatten:
         im = flatten_image(im)
+    else:
+        im = im.T
     if normalize:
         im = normalize_image(im)
     return im
@@ -26,7 +29,13 @@ def open_image(image_path, flatten=True, normalize=True):
 def image_to_tensor(image):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     image_tensor = torch.tensor(image, device=device)
-    image_tensor = image_tensor.unsqueeze(0).unsqueeze(0)
+    if len(np.shape(image)) == 2:
+        image_tensor = image_tensor.unsqueeze(0).unsqueeze(0)
+    elif len(np.shape(image)) == 3:
+        image_tensor = image_tensor.unsqueeze(0)
+    else:
+        raise ValueError("Input shape not understood")
+
     return image_tensor
 
 def save_image(array, image_path, renorm=True, norm=False):
@@ -36,9 +45,7 @@ def save_image(array, image_path, renorm=True, norm=False):
         array/=np.max(np.abs(array))
         array *= 255
 
-    im = Image.fromarray(array)
-    im = im.convert('RGB')
-    im.save(image_path)
+    plt.imsave(image_path, array.T.astype(np.uint8))
 
 def get_all_pairs(classes):
     pairs = []

@@ -8,7 +8,7 @@ def flatten_image(pil_image):
     """
     pil_image: image as returned from PIL Image
     """
-    return np.array(pil_image[:,:,0], dtype=np.float32)
+    return np.expand_dims(np.array(pil_image[:,:,0], dtype=np.float32), axis=0)
 
 def normalize_image(image):
     """
@@ -45,7 +45,12 @@ def save_image(array, image_path, renorm=True, norm=False):
         array/=np.max(np.abs(array))
         array *= 255
 
-    plt.imsave(image_path, array.T.astype(np.uint8))
+    if np.shape(array)[0] == 1:
+        # greyscale
+        array = np.concatenate([array.astype(np.uint8),]*3, axis=0).T
+        plt.imsave(image_path, array, cmap='gray')
+    else:
+        plt.imsave(image_path, array.T.astype(np.uint8))
 
 def get_all_pairs(classes):
     pairs = []

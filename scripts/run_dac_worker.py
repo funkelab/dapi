@@ -63,8 +63,8 @@ def run_worker(worker,id_min,id_max,img_dir, real_classes,
             real_class = real[1]
             fake_class = fake[1]
 
-            real_img = open_image(real_img, flatten=False, normalize=False)
-            fake_img = open_image(fake_img, flatten=False, normalize=False)
+            real_img = open_image(real_img, flatten=channels==1, normalize=False)
+            fake_img = open_image(fake_img, flatten=channels==1, normalize=False)
 
             if methods is None:
                 attrs, attrs_names = get_attribution(real_img, fake_img, real_class,

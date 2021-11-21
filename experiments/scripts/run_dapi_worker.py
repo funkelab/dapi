@@ -5,9 +5,9 @@ from tqdm import tqdm
 import argparse
 import json
 
-from dac.utils import open_image, save_image, get_image_pairs
-from dac.mask import get_mask
-from dac.attribute import get_attribution
+from dapi.utils import open_image, save_image, get_image_pairs
+from dapi.mask import get_mask
+from dapi.attribute import get_attribution
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--worker', type=int, required=True)
@@ -29,10 +29,10 @@ parser.add_argument('--bidirectional', type=int, required=True)
 parser.add_argument('--max_images', type=int, required=False, default=None)
 parser.add_argument('--channels', type=int, required=True)
 
-def run_worker(worker,id_min,id_max,img_dir, real_classes, 
-               fake_classes, net_module, checkpoint, 
-               input_shape, output_classes, out_dir, 
-               abs_attr, methods, class_names, downsample_factors, 
+def run_worker(worker,id_min,id_max,img_dir, real_classes,
+               fake_classes, net_module, checkpoint,
+               input_shape, output_classes, out_dir,
+               abs_attr, methods, class_names, downsample_factors,
                bidirectional, max_images, channels, write_opt=True):
 
     bidirectional = bool(bidirectional)
@@ -69,14 +69,14 @@ def run_worker(worker,id_min,id_max,img_dir, real_classes,
             if methods is None:
                 attrs, attrs_names = get_attribution(real_img, fake_img, real_class,
                                                      fake_class, net_module, checkpoint,
-                                                     input_shape, channels, 
+                                                     input_shape, channels,
                                                      output_classes=output_classes,
                                                      bidirectional=bidirectional,
                                                      downsample_factors=downsample_factors)
             else:
                 attrs, attrs_names = get_attribution(real_img, fake_img, real_class,
                                                      fake_class, net_module, checkpoint,
-                                                     input_shape, channels, methods, 
+                                                     input_shape, channels, methods,
                                                      output_classes=output_classes,
                                                      bidirectional=bidirectional,
                                                      downsample_factors=downsample_factors)
@@ -93,14 +93,14 @@ def run_worker(worker,id_min,id_max,img_dir, real_classes,
                                                             downsample_factors=downsample_factors)
 
 
-                    
+
 
                 method_dir = os.path.join(img_dir, name)
                 if not os.path.exists(method_dir):
                     os.makedirs(method_dir)
 
                     with open(os.path.join(method_dir, "results.txt"), 'w+') as f:
-                        print(result_dict, file=f) 
+                        print(result_dict, file=f)
 
                 if write_opt:
                     thr_idx, thr, mask_size, mask_score = get_optimal_mask(result_dict, input_shape[0])
@@ -114,7 +114,7 @@ def run_worker(worker,id_min,id_max,img_dir, real_classes,
                         save_image(img_opt, out_path)
 
                     with open(f'{imgs_dir}/img_info.json', "w+") as f:
-                        json.dump({"real_class": real_class, 
+                        json.dump({"real_class": real_class,
                                    "fake_class": fake_class,
                                    "thr": thr,
                                    "mask_size": mask_size,
@@ -132,7 +132,7 @@ class HiddenPrints:
 
 def parse_args(args):
     arg_dict = vars(args)
-    down = arg_dict["downsample_factors"] 
+    down = arg_dict["downsample_factors"]
     if down[0] != "None":
         down = [int(k) for k in arg_dict["downsample_factors"]]
         down = [(down[i], down[i+1]) for i in range(0,len(down),2)]
@@ -144,7 +144,7 @@ def parse_args(args):
 def get_optimal_mask(result_dict, size):
     def ascore(m_s, m_n):
         return m_n**2 + (1 - m_s)**2
-    
+
     ascores = []
     thrs = []
     mask_sizes = []
@@ -156,7 +156,7 @@ def get_optimal_mask(result_dict, size):
         thrs.append(thr)
         mask_sizes.append(mask_size)
         mask_scores.append(mask_score)
-            
+
     thr_idx = np.argmin(ascores)
     thr = thrs[thr_idx]
     mask_size = mask_sizes[thr_idx]

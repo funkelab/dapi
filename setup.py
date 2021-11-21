@@ -1,12 +1,12 @@
 from setuptools import setup
 
 setup(
-    name='DAC',
+    name='dapi',
     version='0.1',
-    description='DAC',
-    url='https://github.com/anona/dac',
-    author='Anon',
+    description='dapi',
+    url='https://github.com/anon/dapi',
+    author='anon',
     packages=[
-        'dac',
-        'dac_networks'
+        'dapi',
+        'dapi_networks'
         ])

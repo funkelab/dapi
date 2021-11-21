@@ -4,8 +4,8 @@ from torch.nn import init
 import functools
 from torch.optim import lr_scheduler
 import torch.nn.functional as F
-from dac_networks.Vgg2D import Vgg2D
-from dac_networks.ResNet import ResNet
+from dapi_networks.Vgg2D import Vgg2D
+from dapi_networks.ResNet import ResNet
 
 ###############################################################################
 # Helper Functions
@@ -374,7 +374,7 @@ class ResnetGenerator(nn.Module):
         """Standard forward"""
         return self.model(input)
 
-def define_AUX(checkpoint_path, input_size=128, aux_net="vgg2d", output_classes=6, 
+def define_AUX(checkpoint_path, input_size=128, aux_net="vgg2d", output_classes=6,
                downsample_factors=[(2,2), (2,2), (2,2), (2,2)], input_nc=1, gpu_ids=[]):
     """
     checkpoint_path: Path to train checkpoint to restore weights from

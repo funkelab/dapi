@@ -6,15 +6,15 @@ import itertools
 import argparse
 import configparser
 
-from dac.utils import open_image, save_image, get_image_pairs
+from dapi.utils import open_image, save_image, get_image_pairs
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', type=str, required=True)
 parser.add_argument('--net', type=str, required=True)
 
-def run_dac(img_dir, real_classes, fake_classes, class_names, net_module, checkpoint, 
-            input_shape, output_classes, out_dir, methods=None, num_workers=10, 
-            channels=1, submit_script="run_dac_worker.py", max_images=None,
+def run_dapi(img_dir, real_classes, fake_classes, class_names, net_module, checkpoint,
+            input_shape, output_classes, out_dir, methods=None, num_workers=10,
+            channels=1, submit_script="run_dapi_worker.py", max_images=None,
             submit_cmd="python", downsample_factors=None, bidirectional=False):
 
     '''Run attribution & mask extraction for image pairs in given directory
@@ -27,7 +27,7 @@ def run_dac(img_dir, real_classes, fake_classes, class_names, net_module, checkp
 
         real_classes: (''list of str'')
 
-            Real class identifiers 
+            Real class identifiers
 
         fake_classes: (''list of str'')
 
@@ -79,7 +79,7 @@ def run_dac(img_dir, real_classes, fake_classes, class_names, net_module, checkp
 
         submit_cmd: (''str'')
 
-            Script submit command, will be run in terminal and can 
+            Script submit command, will be run in terminal and can
             be used to submit to a cluster.
     '''
 
@@ -89,7 +89,7 @@ def run_dac(img_dir, real_classes, fake_classes, class_names, net_module, checkp
         image_pairs = get_image_pairs(img_dir, real_class, fake_class)
         reals_dir = [(p[0],real_class) for p in image_pairs]
         fakes_dir = [(p[1],fake_class) for p in image_pairs]
-        
+
         if max_images is not None:
             reals.extend(reals_dir[:max_images])
             fakes.extend(fakes_dir[:max_images])
@@ -132,7 +132,7 @@ def run_dac(img_dir, real_classes, fake_classes, class_names, net_module, checkp
         if worker == num_workers - 1:
             rest = n_rest
 
-        id_min = int(worker*n_images_per_worker) 
+        id_min = int(worker*n_images_per_worker)
         id_max = int(id_min + n_images_per_worker + rest)
 
         arg_cmd = f" --worker {worker} --id_min {id_min} --id_max {id_max} --img_dir {img_dir}"+\
@@ -189,4 +189,4 @@ def parse_cfg_dict(cfg_dict):
 if __name__ == "__main__":
     args = parser.parse_args()
     config = read_exp_config(args.config, args.net)
-    run_dac(**config)
+    run_dapi(**config)

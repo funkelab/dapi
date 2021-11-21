@@ -1,4 +1,4 @@
-# DAC
+# DAPI
 
 Main repository for the paper 'Discriminative Attribution from Paired Images'.
 

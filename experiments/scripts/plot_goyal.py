@@ -9,9 +9,10 @@ from tqdm import tqdm
 import argparse
 parser = argparse.ArgumentParser(description='Plot goyal et al. comparison')
 parser.add_argument('--dset', help="name of dataset, e.g. summer_winter")
-parser.add_argument('--goyal_root_path', help="Path to goyal et al. results")
-parser.add_argument('--dapi_root_path', help="Path to dapi results")
+parser.add_argument('--goyal_dset_path', help="Path to goyal et al. results")
+parser.add_argument('--dapi_dset_path', help="Path to dapi results")
 parser.add_argument('--net', help="Network (res or vgg)")
+parser.add_argument('--dapi_method', help="Attribution method to plot, one of ig, dl, gc, ggc, ingrad, residual")
 
 
 mpl.rcParams['figure.dpi'] = 300
@@ -68,7 +69,8 @@ def plot_dapi(base_to_res, experiment, net, leg=True, methods=None, bl=False):
                        "gc": "deeppink",
                        "ggc": "blue",
                        "ig": "orange",
-                       "ingrad": "purple"}
+                       "ingrad": "purple",
+                       "baseline": "dimgray"}
 
     plot_lines_dapi = []
     plot_lines_base = []
@@ -76,6 +78,8 @@ def plot_dapi(base_to_res, experiment, net, leg=True, methods=None, bl=False):
     if methods is None:
         methods = ["dl", "gc", "ggc", "ig", "ingrad"]
     for method in methods:
+        if method == "residual":
+            method = "baseline"
         base_res = base_to_res[method]
 
         for attr, results in base_res.items():
@@ -100,19 +104,19 @@ def plot_dapi(base_to_res, experiment, net, leg=True, methods=None, bl=False):
             auc = np.trapz(yy, xx)
             print(method, attr, f"DAPI SCORE: {auc}")
 
-            if attr == "D":
+            if attr == "D" or attr == "residual":
                 color = method_to_color[method]
                 label = "$\mathregular{D}$"
                 linestyle="-"
-
-            else:
-                continue
-
-            if attr == "D":
+                if attr == "residual":
+                    method = "res"
                 l, = plt.plot(xx,yy,color=color,
                               label="D-$\mathregular{" + f"{method.upper()}" + "}$ (ours)",
                               linewidth=2, alpha=1, linestyle=linestyle)
                 plot_lines_dapi.append(l)
+
+            else:
+                continue
 
     l0, = plt.plot([0,0], [0,0], linestyle="-", alpha=1, color="black")
     l1, = plt.plot([0,0], [0,0], linestyle="--", alpha=1, color="black")
@@ -166,10 +170,13 @@ def parse_goyal_results(dataset_dir, classes, img_shape):
         qd_ids = sample[1]
 
         csv_sample = []
-        with open(path, "r") as f:
-            content = csv.reader(f, delimiter=",")
-            for line in content:
-                csv_sample.append(line)
+        try:
+            with open(path, "r") as f:
+                content = csv.reader(f, delimiter=",")
+                for line in content:
+                    csv_sample.append(line)
+        except:
+            continue
 
         # Query Dist
         query_index = qd_ids[0]
@@ -237,7 +244,7 @@ def get_auc(sample_to_xy):
     auc = np.trapz(yy, xx)
     return auc
 
-def plot_dset(dset, goyal_path, dapi_path, net):
+def plot_dset(dset, goyal_path, dapi_path, net, method):
     dset_to_classes = {"summer_winter": ["summer", "winter"],
                        "horses_zebras": ["horses", "zebras"],
                        "apples_oranges": ["apples", "oranges"],
@@ -255,15 +262,15 @@ def plot_dset(dset, goyal_path, dapi_path, net):
                     "synapses": (128,128)}
 
     classes = dset_to_classes[dset]
-    sample_to_xy_goyal = parse_goyal_results(f"{goyal_path}/{dset}/{net}", classes, dset_to_size[dset])
-    sample_to_xy_dapi = parse_dapi_results(f"{dapi_path}/{dset}/{net}")
-    plot_dapi(sample_to_xy_dapi, "summer_winter", net="vgg", leg=True, methods=["dl"])
+    sample_to_xy_goyal = parse_goyal_results(goyal_path, classes, dset_to_size[dset])
+    sample_to_xy_dapi = parse_dapi_results(dapi_path)
+    plot_dapi(sample_to_xy_dapi, dset, net="vgg", leg=True, methods=[method])
     plot_goyal(sample_to_xy_goyal, "black", "Goyal et al.", "-")
     plt.grid()
-    plt.savefig(dset + "_goyal.png", bbox_inches = 'tight', pad_inches = 0)
+    plt.savefig(dset + f"_goyal_{net}.png", bbox_inches = 'tight', pad_inches = 0)
     plt.clf()
 
 
 if __name__ == "__main__":
     args = parser.parse_args()
-    plot_dset(args.dset, args.goyal_root_path, args.dapi_root_path, args.net)
+    plot_dset(args.dset, args.goyal_dset_path, args.dapi_dset_path, args.net, args.dapi_method)

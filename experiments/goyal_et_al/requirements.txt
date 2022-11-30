@@ -1,7 +1,0 @@
-einops
-fastai
-timm
-torch
-torchvision
-tqdm
-scikit-image

@@ -8,21 +8,21 @@ import scipy
 import scipy.ndimage
 import sys
 
-from dac.utils import save_image, normalize_image, image_to_tensor
-from dac.activations import project_layer_activations_to_input_rescale
-from dac.stereo_gc import get_sgc
-from dac_networks import init_network
+from dapi.utils import save_image, normalize_image, image_to_tensor
+from dapi.activations import project_layer_activations_to_input_rescale
+from dapi.stereo_gc import get_sgc
+from dapi_networks import init_network
 
 torch.manual_seed(123)
 np.random.seed(123)
 
-def get_attribution(real_img, 
-                    fake_img, 
-                    real_class, 
-                    fake_class, 
-                    net_module, 
-                    checkpoint_path, 
-                    input_shape, 
+def get_attribution(real_img,
+                    fake_img,
+                    real_class,
+                    fake_class,
+                    net_module,
+                    checkpoint_path,
+                    input_shape,
                     channels,
                     methods=["ig", "grads", "gc", "ggc", "dl", "ingrad", "random", "residual"],
                     output_classes=6,
@@ -34,7 +34,7 @@ def get_attribution(real_img,
     Args:
 
         real_img: (''array like'')
-                
+
             Real image to run attribution on.
 
 
@@ -84,7 +84,7 @@ def get_attribution(real_img,
             Return both attribution directions.
     '''
 
-    imgs = [image_to_tensor(normalize_image(real_img).astype(np.float32)), 
+    imgs = [image_to_tensor(normalize_image(real_img).astype(np.float32)),
             image_to_tensor(normalize_image(fake_img).astype(np.float32))]
 
     classes = [real_class, fake_class]
@@ -123,8 +123,8 @@ def get_attribution(real_img,
         attrs.append(torch.tensor(gc_real))
         attrs_names.append("gc")
 
-        gc_diff_0, gc_diff_1 = get_sgc(real_img, fake_img, real_class, 
-                                     fake_class, net_module, checkpoint_path, 
+        gc_diff_0, gc_diff_1 = get_sgc(real_img, fake_img, real_class,
+                                     fake_class, net_module, checkpoint_path,
                                      input_shape, channels, None, output_classes=output_classes,
                                      downsample_factors=downsample_factors)
         attrs.append(gc_diff_0)
@@ -152,8 +152,8 @@ def get_attribution(real_img,
         print(f"GGC shape {ggc_real.shape}")
         attrs_names.append("ggc")
 
-        gc_diff_0, gc_diff_1 = get_sgc(real_img, fake_img, real_class, 
-                                     fake_class, net_module, checkpoint_path, 
+        gc_diff_0, gc_diff_1 = get_sgc(real_img, fake_img, real_class,
+                                     fake_class, net_module, checkpoint_path,
                                      input_shape, channels, None, output_classes=output_classes,
                                      downsample_factors=downsample_factors)
 
@@ -198,7 +198,7 @@ def get_attribution(real_img,
             attrs.append(ig_diff_0[0,:,:,:])
             attrs_names.append("d_ig_inv")
 
-        
+
     # DL
     if "dl" in methods:
         net.zero_grad()
@@ -225,10 +225,10 @@ def get_attribution(real_img,
     if "ingrad" in methods:
         net.zero_grad()
         saliency = Saliency(net)
-        grads_real = saliency.attribute(imgs[0], 
-                                        target=classes[0]) 
-        grads_fake = saliency.attribute(imgs[1], 
-                                        target=classes[1]) 
+        grads_real = saliency.attribute(imgs[0],
+                                        target=classes[0])
+        grads_fake = saliency.attribute(imgs[1],
+                                        target=classes[1])
 
 
         net.zero_grad()
@@ -236,7 +236,7 @@ def get_attribution(real_img,
         ingrad_real = input_x_gradient.attribute(imgs[0], target=classes[0])
 
         ingrad_diff_0 = grads_fake * (imgs[0] - imgs[1])
-   
+
         attrs.append(torch.abs(ingrad_real[0,:,:,:]))
         attrs_names.append("ingrad")
 

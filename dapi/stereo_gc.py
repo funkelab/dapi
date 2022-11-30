@@ -3,14 +3,14 @@ import numpy as np
 import os
 import torch
 
-from dac.gradients import get_gradients_from_layer
-from dac.activations import get_activation_dict, get_layer_activations, project_layer_activations_to_input_rescale
-from dac.utils import normalize_image, save_image
-from dac_networks import run_inference, init_network
+from dapi.gradients import get_gradients_from_layer
+from dapi.activations import get_activation_dict, get_layer_activations, project_layer_activations_to_input_rescale
+from dapi.utils import normalize_image, save_image
+from dapi_networks import run_inference, init_network
 
-def get_sgc(real_img, fake_img, real_class, fake_class, 
-            net_module, checkpoint_path, input_shape, 
-            input_nc, layer_name=None, output_classes=6, 
+def get_sgc(real_img, fake_img, real_class, fake_class,
+            net_module, checkpoint_path, input_shape,
+            input_nc, layer_name=None, output_classes=6,
             downsample_factors=None):
     """
         real_img: Unnormalized (0-255) 2D image
@@ -39,19 +39,19 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
     classes = [real_class, fake_class]
 
     if layer_name is None:
-        net = init_network(checkpoint_path, input_shape, net_module, 
-                           input_nc, eval_net=True, require_grad=False, 
+        net = init_network(checkpoint_path, input_shape, net_module,
+                           input_nc, eval_net=True, require_grad=False,
                            output_classes=output_classes,
                            downsample_factors=downsample_factors)
         last_conv_layer = [(name,module) for name, module in net.named_modules() if type(module) == torch.nn.Conv2d][-1]
         layer_name = last_conv_layer[0]
         layer = last_conv_layer[1]
-   
+
     grads = []
     for x,y in zip(imgs,classes):
-        grad_net = init_network(checkpoint_path, input_shape, net_module, 
-                                input_nc, eval_net=True, require_grad=False, 
-                                output_classes=output_classes, 
+        grad_net = init_network(checkpoint_path, input_shape, net_module,
+                                input_nc, eval_net=True, require_grad=False,
+                                output_classes=output_classes,
                                 downsample_factors=downsample_factors)
         grads.append(get_gradients_from_layer(grad_net, x, y, layer_name))
 
@@ -60,7 +60,7 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
     acts_real = collections.defaultdict(list)
     acts_fake = collections.defaultdict(list)
 
-    activation_net = init_network(checkpoint_path, input_shape, net_module, 
+    activation_net = init_network(checkpoint_path, input_shape, net_module,
                                   input_nc, eval_net=True, require_grad=False, output_classes=output_classes,
                                   downsample_factors=downsample_factors)
 
@@ -69,7 +69,7 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
 
     acts = [acts_real, acts_fake]
     outs = [out_real, out_fake]
-    
+
     layer_acts = []
     for act in acts:
         layer_acts.append(get_layer_activations(act, layer_name))

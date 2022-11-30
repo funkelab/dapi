@@ -2,9 +2,9 @@ import importlib
 import torch
 import torch.nn.functional as F
 
-from dac.utils import image_to_tensor
+from dapi.utils import image_to_tensor
 
-def init_network(checkpoint_path=None, input_shape=(128,128), net_module="Vgg2D", 
+def init_network(checkpoint_path=None, input_shape=(128,128), net_module="Vgg2D",
                  input_nc=1, output_classes=6, gpu_ids=[], eval_net=True, require_grad=False,
                  downsample_factors=None):
     """
@@ -14,7 +14,7 @@ def init_network(checkpoint_path=None, input_shape=(128,128), net_module="Vgg2D"
 
     aux_net: name of aux net
     """
-    net_mod = importlib.import_module(f"dac_networks.{net_module}")
+    net_mod = importlib.import_module(f"dapi_networks.{net_module}")
     net_class = getattr(net_mod, f'{net_module}')
     if net_module == "Vgg2D":
         net = net_class(input_size=input_shape, input_channels=input_nc, output_classes=output_classes,

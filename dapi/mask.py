@@ -2,10 +2,10 @@ import numpy as np
 import cv2
 import copy
 
-from dac.utils import normalize_image, save_image
-from dac_networks import run_inference, init_network
+from dapi.utils import normalize_image, save_image
+from dapi_networks import run_inference, init_network
 
-def get_mask(attribution, real_img, fake_img, real_class, fake_class, 
+def get_mask(attribution, real_img, fake_img, real_class, fake_class,
              net_module, checkpoint_path, input_shape, input_nc, output_classes,
              downsample_factors=None, sigma=11, struc=10, channel_wise=False):
     """
@@ -67,22 +67,22 @@ def get_mask(attribution, real_img, fake_img, real_class, fake_class,
         copied_canvas_to = copied_canvas_to_full
 
         diff_copied = copied_canvas - copied_canvas_to
-            
+
         fake_img_norm = normalize_image(copy.deepcopy(fake_img))
         out_fake = run_inference(net, fake_img_norm)
-        
+
         real_img_norm = normalize_image(copy.deepcopy(real_img))
         out_real = run_inference(net, real_img_norm)
 
         im_copied_norm = normalize_image(copy.deepcopy(copyto))
         out_copyto = run_inference(net, im_copied_norm)
 
-        imgs = [attribution, real_img_norm, fake_img_norm, im_copied_norm, normalize_image(copied_canvas), 
+        imgs = [attribution, real_img_norm, fake_img_norm, im_copied_norm, normalize_image(copied_canvas),
                 normalize_image(copied_canvas_to), normalize_image(diff_copied), mask_weight]
 
         imgs_all.append(imgs)
 
-        mrf_score = out_copyto[0][real_class] - out_fake[0][real_class]     
+        mrf_score = out_copyto[0][real_class] - out_fake[0][real_class]
         result_dict[thr] = [float(mrf_score.detach().cpu().numpy()), mask_size]
 
     return result_dict, img_names, imgs_all

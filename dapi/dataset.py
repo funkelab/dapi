@@ -3,11 +3,11 @@ import os
 from shutil import copy
 import itertools
 
-from dac.utils import open_image
+from dapi.utils import open_image
 
 
-def parse_predictions(prediction_dir, 
-                      real_class, 
+def parse_predictions(prediction_dir,
+                      real_class,
                       fake_class):
     '''Parse cycle-GAN predictions from prediction dir.
 
@@ -76,8 +76,8 @@ def create_filtered_dataset(ids_to_data, data_dir, threshold=0.8):
     Args:
 
         ids_to_data: (''Dict'')
-            
-            Dictionary of image ids to image data as returned by 
+
+            Dictionary of image ids to image data as returned by
             parse_predictions
 
         data_dir: (''str'')

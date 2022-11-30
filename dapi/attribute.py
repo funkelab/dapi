@@ -10,9 +10,6 @@ import scipy
 import scipy.ndimage
 import torch
 
-torch.manual_seed(123)
-np.random.seed(123)
-
 
 def get_attribution(real_img,
                     fake_img,

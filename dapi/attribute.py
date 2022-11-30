@@ -97,7 +97,7 @@ def get_attribution(real_img,
             image_to_tensor(normalize_image(fake_img).astype(np.float32))]
 
     classes = [real_class, fake_class]
-    net = init_network(
+    classifier = init_network(
         checkpoint_path,
         input_shape,
         net_module,
@@ -125,14 +125,14 @@ def get_attribution(real_img,
         attrs_names.append("random")
 
     if "gc" in methods:
-        net.zero_grad()
+        classifier.zero_grad()
         last_conv_layer = [
             (name, module)
-            for name, module in net.named_modules()
+            for name, module in classifier.named_modules()
             if type(module) == torch.nn.Conv2d
         ][-1]
         layer = last_conv_layer[1]
-        layer_gc = LayerGradCam(net, layer)
+        layer_gc = LayerGradCam(classifier, layer)
         gc_real = layer_gc.attribute(imgs[0], target=classes[0])
 
         gc_real = project_layer_activations_to_input_rescale(
@@ -174,15 +174,15 @@ def get_attribution(real_img,
             attrs_names.append("d_gc_inv")
 
     if "ggc" in methods:
-        net.zero_grad()
+        classifier.zero_grad()
         last_conv = [
             module
-            for module in net.modules()
+            for module in classifier.modules()
             if type(module) == torch.nn.Conv2d
         ][-1]
 
         # Real
-        guided_gc = GuidedGradCam(net, last_conv)
+        guided_gc = GuidedGradCam(classifier, last_conv)
         ggc_real = guided_gc.attribute(imgs[0], target=classes[0])
         attrs.append(ggc_real[0, :, :, :])
         print(f"GGC shape {ggc_real.shape}")
@@ -202,8 +202,8 @@ def get_attribution(real_img,
             downsample_factors=downsample_factors)
 
         # D-gc
-        net.zero_grad()
-        gbp = GuidedBackprop(net)
+        classifier.zero_grad()
+        gbp = GuidedBackprop(classifier)
         gbp_real = gbp.attribute(imgs[0], target=classes[0])
         ggc_diff_0 = gbp_real[0, :, :, :] * gc_diff_0
         attrs.append(ggc_diff_0)
@@ -224,8 +224,8 @@ def get_attribution(real_img,
         baseline = image_to_tensor(
             np.zeros(np.shape(real_img), dtype=np.float32)
         )
-        net.zero_grad()
-        ig = IntegratedGradients(net)
+        classifier.zero_grad()
+        ig = IntegratedGradients(classifier)
         ig_real, delta_real = ig.attribute(
             imgs[0],
             baseline,
@@ -262,8 +262,8 @@ def get_attribution(real_img,
 
     # DL
     if "dl" in methods:
-        net.zero_grad()
-        dl = DeepLift(net)
+        classifier.zero_grad()
+        dl = DeepLift(classifier)
         dl_real = dl.attribute(imgs[0], target=classes[0])
         dl_diff_1 = dl.attribute(imgs[1], baselines=imgs[0], target=classes[1])
 
@@ -287,15 +287,15 @@ def get_attribution(real_img,
 
     # INGRAD
     if "ingrad" in methods:
-        net.zero_grad()
-        saliency = Saliency(net)
+        classifier.zero_grad()
+        saliency = Saliency(classifier)
         grads_real = saliency.attribute(imgs[0],
                                         target=classes[0])
         grads_fake = saliency.attribute(imgs[1],
                                         target=classes[1])
 
-        net.zero_grad()
-        input_x_gradient = InputXGradient(net)
+        classifier.zero_grad()
+        input_x_gradient = InputXGradient(classifier)
         ingrad_real = input_x_gradient.attribute(imgs[0], target=classes[0])
 
         ingrad_diff_0 = grads_fake * (imgs[0] - imgs[1])

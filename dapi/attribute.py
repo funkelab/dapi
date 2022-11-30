@@ -4,7 +4,6 @@ from captum.attr import IntegratedGradients, Saliency, DeepLift,\
 from dapi.activations import project_layer_activations_to_input_rescale
 from dapi.stereo_gc import get_sgc
 from dapi.utils import normalize_image, image_to_tensor
-from dapi_networks import init_network
 import numpy as np
 import scipy
 import scipy.ndimage
@@ -15,10 +14,7 @@ def get_attribution(real_img,
                     fake_img,
                     real_class,
                     fake_class,
-                    net_module,
-                    checkpoint_path,
-                    input_shape,
-                    channels,
+                    classifier,
                     methods=[
                         "ig",
                         "grads",
@@ -29,24 +25,21 @@ def get_attribution(real_img,
                         "random",
                         "residual"
                     ],
-                    output_classes=6,
-                    downsample_factors=None,
                     bidirectional=False):
 
     '''Return (discriminative) attributions for an image pair.
 
     Args:
 
-        real_img: (''array like'')
+        real_img: (array-like)
 
             Real image to run attribution on.
 
-
-        fake_img: (''array like'')
+        fake_img: (array-like)
 
             Counterfactual image typically created by a cycle GAN.
 
-        real_class: (''int'')
+        real_class: (int)
 
             Class index of real image. Must correspond to networks output
             class.
@@ -56,53 +49,36 @@ def get_attribution(real_img,
             Class index of fake image. Must correspond to networks output
             class.
 
-        net_module: (''str'')
+        classifier: (torch module)
 
-            Name of network to use. Network is assumed to be specified at
-            networks/{net_module}.py and have a matching class name.
+            The classifier network to use.
 
-        checkpoint_path: (''str'')
+        methods: (list of str)
 
-            Path to network checkpoint
+            List of attribution methods to run. Possible values are: "ig"
+            (Integrated Gradients), "grads" (just gradients), "gc" (GradCam),
+            "ggc" (Guided GradCam), "dl" (DeepLift), "ingrad" (Input x
+            Gradient), "random" (random attribution as a baseline), and
+            "residual" (pixel-wise difference).
 
-        input_shape: (''tuple of int'')
-
-            Spatial input image shape, must be 2D.
-
-        channels: (''int'')
-
-            Number of input channels
-
-        methods: (''list of str'')
-
-            List of attribution methods to run
-
-        output_classes: (''int'')
-
-            Number of network output classes
-
-        downsample_factors: (''List of tuple of int'')
-
-            Network argument specifying downsample factors
-
-        bidirectional: (''int'')
+        bidirectional: (bool)
 
             Return both attribution directions.
     '''
+
+    # get input shape and number of channels
+    channels, height, width = real_img.shape
+    input_shape = (height, width)
 
     imgs = [image_to_tensor(normalize_image(real_img).astype(np.float32)),
             image_to_tensor(normalize_image(fake_img).astype(np.float32))]
 
     classes = [real_class, fake_class]
-    classifier = init_network(
-        checkpoint_path,
-        input_shape,
-        net_module,
-        channels,
-        output_classes=output_classes,
-        eval_net=True,
-        require_grad=False,
-        downsample_factors=downsample_factors)
+
+    # prepare classifier
+    classifier.eval()
+    for param in classifier.parameters():
+        param.requires_grad = False
 
     attrs = []
     attrs_names = []
@@ -146,13 +122,7 @@ def get_attribution(real_img,
             fake_img,
             real_class,
             fake_class,
-            net_module,
-            checkpoint_path,
-            input_shape,
-            channels,
-            None,
-            output_classes=output_classes,
-            downsample_factors=downsample_factors)
+            classifier)
         attrs.append(gc_diff_0)
         attrs_names.append("d_gc")
 
@@ -190,13 +160,7 @@ def get_attribution(real_img,
             fake_img,
             real_class,
             fake_class,
-            net_module,
-            checkpoint_path,
-            input_shape,
-            channels,
-            None,
-            output_classes=output_classes,
-            downsample_factors=downsample_factors)
+            classifier)
 
         # D-gc
         classifier.zero_grad()

@@ -2,16 +2,18 @@ from dapi.activations import get_activation_dict, get_layer_activations, \
     project_layer_activations_to_input_rescale
 from dapi.gradients import get_gradients_from_layer
 from dapi.utils import normalize_image
-from dapi_networks import init_network
 import collections
 import numpy as np
 import torch
 
 
-def get_sgc(real_img, fake_img, real_class, fake_class,
-            net_module, checkpoint_path, input_shape,
-            input_nc, layer_name=None, output_classes=6,
-            downsample_factors=None):
+def get_sgc(
+        real_img,
+        fake_img,
+        real_class,
+        fake_class,
+        classifier,
+        layer_name=None):
     """
         real_img: Unnormalized (0-255) 2D image
 
@@ -19,66 +21,69 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
 
         *_class: Index of real and fake class corresponding to network output
 
-        net_module: Name of file and class name of the network to use. Must be
-            placed in networks subdirectory
-
-        checkpoint_path: Checkpoint of network.
-
-        input_shape: Spatial input shape of network
-
-        input_nc: Number of input channels.
+        TODO: add classifier
 
         layer_name: Name of the conv layer to use (defaults to last)
 
-        output_classes: Number of network output classes
+    Args:
 
-        downsample_factors: Network downsample factors
+        real_img: (array-like)
+
+            Real image to run attribution on.
+
+        fake_img: (array-like)
+
+            Counterfactual image typically created by a cycle GAN.
+
+        real_class: (int)
+
+            Class index of real image. Must correspond to networks output
+            class.
+
+        fake_class: (''int'')
+
+            Class index of fake image. Must correspond to networks output
+            class.
+
+        classifier: (torch module)
+
+            The classifier network to use.
+
+        layer_name: (string)
+
+            Name of the conv layer to use (defaults to last).
     """
+
+    # get input shape and number of channels
+    channels, height, width = real_img.shape
+    input_shape = (height, width)
 
     imgs = [normalize_image(real_img), normalize_image(fake_img)]
     classes = [real_class, fake_class]
 
     if layer_name is None:
-        net = init_network(checkpoint_path, input_shape, net_module,
-                           input_nc, eval_net=True, require_grad=False,
-                           output_classes=output_classes,
-                           downsample_factors=downsample_factors)
         last_conv_layer = [
             (name, module)
-            for name, module in net.named_modules()
+            for name, module in classifier.named_modules()
             if type(module) == torch.nn.Conv2d
         ][-1]
         layer_name = last_conv_layer[0]
 
     grads = []
     for x, y in zip(imgs, classes):
-        grad_net = init_network(checkpoint_path, input_shape, net_module,
-                                input_nc, eval_net=True, require_grad=False,
-                                output_classes=output_classes,
-                                downsample_factors=downsample_factors)
-        grads.append(get_gradients_from_layer(grad_net, x, y, layer_name))
+        grads.append(get_gradients_from_layer(classifier, x, y, layer_name))
 
     print(f"GRAD SHAPE {grads[0].shape}")
 
     acts_real = collections.defaultdict(list)
     acts_fake = collections.defaultdict(list)
 
-    activation_net = init_network(
-        checkpoint_path,
-        input_shape,
-        net_module,
-        input_nc,
-        eval_net=True,
-        require_grad=False,
-        output_classes=output_classes,
-        downsample_factors=downsample_factors)
-
     acts_real, _ = get_activation_dict(
-        activation_net,
+        classifier,
         [imgs[0]],
         acts_real)
     acts_fake, _ = get_activation_dict(
-        activation_net,
+        classifier,
         [imgs[1]],
         acts_fake)
 
@@ -110,7 +115,7 @@ def get_sgc(real_img, fake_img, real_class, fake_class,
     gc_1 = np.abs(gc_1)
     gc_0 /= np.max(np.abs(gc_0))
     gc_1 /= np.max(np.abs(gc_1))
-    gc_0 = np.stack([gc_0,]*input_nc, axis=0)
-    gc_1 = np.stack([gc_1,]*input_nc, axis=0)
+    gc_0 = np.stack([gc_0,]*channels, axis=0)
+    gc_1 = np.stack([gc_1,]*channels, axis=0)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     return torch.tensor(gc_0, device=device), torch.tensor(gc_1, device=device)

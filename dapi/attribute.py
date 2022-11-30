@@ -15,16 +15,7 @@ def get_attribution(real_img,
                     real_class,
                     fake_class,
                     classifier,
-                    methods=[
-                        "ig",
-                        "grads",
-                        "gc",
-                        "ggc",
-                        "dl",
-                        "ingrad",
-                        "random",
-                        "residual"
-                    ],
+                    methods='all',
                     bidirectional=False):
 
     '''Return (discriminative) attributions for an image pair.
@@ -53,13 +44,14 @@ def get_attribution(real_img,
 
             The classifier network to use.
 
-        methods: (list of str)
+        methods: (list of str or 'all')
 
             List of attribution methods to run. Possible values are: "ig"
             (Integrated Gradients), "grads" (just gradients), "gc" (GradCam),
             "ggc" (Guided GradCam), "dl" (DeepLift), "ingrad" (Input x
             Gradient), "random" (random attribution as a baseline), and
-            "residual" (pixel-wise difference).
+            "residual" (pixel-wise difference). If set to 'all' (the default),
+            all of the above methods will be run.
 
         bidirectional: (bool)
 

@@ -1,10 +1,8 @@
 # ignore everything
 *
 
-# but don't ignore files ending with slash = directories
+# but keep directories, python files, text files, and .gitignore
 !*/
-
-# and don't ignore files ending with ".php"
 !*.py
 !*.txt
 !.gitignore

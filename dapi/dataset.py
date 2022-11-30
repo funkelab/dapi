@@ -1,9 +1,6 @@
+from shutil import copy
 import json
 import os
-from shutil import copy
-import itertools
-
-from dapi.utils import open_image
 
 
 def parse_predictions(prediction_dir,
@@ -26,7 +23,10 @@ def parse_predictions(prediction_dir,
             Fake class output index
     '''
 
-    files = [os.path.join(prediction_dir, f) for f in os.listdir(prediction_dir)]
+    files = [
+        os.path.join(prediction_dir, f)
+        for f in os.listdir(prediction_dir)
+    ]
     real_imgs = [f for f in files if f.endswith("real.png")]
     fake_imgs = [f for f in files if f.endswith("fake.png")]
     pred_files = [f for f in files if f.endswith("aux.json")]
@@ -35,29 +35,48 @@ def parse_predictions(prediction_dir,
     img_ids = []
     for id_idx in range(len(real_imgs[0].split("/")[-1].split("_"))):
         try:
-            img_ids = [int(f.split("/")[-1].split("_")[id_idx]) for f in real_imgs]
-            transform = lambda x: int(x)
-            no_numbers = False
+            img_ids = [
+                int(f.split("/")[-1].split("_")[id_idx])
+                for f in real_imgs
+            ]
             break
         except ValueError:
             pass
 
-    #If that does not work use string and rename:
+    # If that does not work use string and rename:
     if not img_ids:
+
         img_ids = [f.split("/")[-1].split("_")[0] for f in real_imgs]
         id_idx = 0
-        transform = lambda x: x
-        no_numbers = True
 
+        def transform(x):
+            return x
+
+    else:
+
+        def transform(x):
+            return int(x)
 
     ids_to_data = {}
     for img_id in img_ids:
-        real = [f for f in real_imgs if img_id == transform(f.split("/")[-1].split("_")[id_idx])]
-        fake = [f for f in fake_imgs if img_id == transform(f.split("/")[-1].split("_")[id_idx])]
-        aux = [f for f in pred_files if img_id == transform(f.split("/")[-1].split("_")[id_idx])]
-        assert(len(real) == 1)
-        assert(len(fake) == 1)
-        assert(len(aux) == 1)
+        real = [
+            f
+            for f in real_imgs
+            if img_id == transform(f.split("/")[-1].split("_")[id_idx])
+        ]
+        fake = [
+            f
+            for f in fake_imgs
+            if img_id == transform(f.split("/")[-1].split("_")[id_idx])
+        ]
+        aux = [
+            f
+            for f in pred_files
+            if img_id == transform(f.split("/")[-1].split("_")[id_idx])
+        ]
+        assert len(real) == 1
+        assert len(fake) == 1
+        assert len(aux) == 1
 
         real = real[0]
         fake = fake[0]
@@ -69,6 +88,7 @@ def parse_predictions(prediction_dir,
         ids_to_data[img_id] = (real, fake, aux_real, aux_fake)
 
     return ids_to_data
+
 
 def create_filtered_dataset(ids_to_data, data_dir, threshold=0.8):
     '''Filter out failed translations (f(x)<threshold)

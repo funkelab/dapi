@@ -1,23 +1,25 @@
-import torch
 from functools import partial
+import numpy as np
+import torch
+
 
 def hook_fn(in_grads, out_grads, m, i, o):
-  for grad in i:
-    try:
-      in_grads.append(grad)
-    except AttributeError: 
-      pass
+    for grad in i:
+        try:
+            in_grads.append(grad)
+        except AttributeError:
+            pass
 
-  for grad in o:  
-    try:
-      out_grads.append(grad.cpu().numpy())
-    except AttributeError: 
-      pass
-    
+    for grad in o:
+        try:
+            out_grads.append(grad.cpu().numpy())
+        except AttributeError:
+            pass
+
+
 def get_gradients_from_layer(net, x, y, layer_name=None, normalize=False):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     xx = torch.tensor(x, device=device).unsqueeze(0)
-    yy = torch.tensor([y], device=device)
     in_grads = []
     out_grads = []
     try:
@@ -28,12 +30,20 @@ def get_gradients_from_layer(net, x, y, layer_name=None, normalize=False):
             param.requires_grad = True
 
     if layer_name is None:
-        layers = [(name,module) for name, module in net.named_modules() if type(module) == torch.nn.Conv2d][-1]
+        layers = [
+            (name, module)
+            for name, module in net.named_modules()
+            if type(module) == torch.nn.Conv2d
+        ][-1]
         layer_name = layers[0]
         layer = layers[1]
     else:
-        layers = [module for name, module in net.named_modules() if name == layer_name]
-        assert(len(layers) == 1)
+        layers = [
+            module
+            for name, module in net.named_modules()
+            if name == layer_name
+        ]
+        assert len(layers) == 1
         layer = layers[0]
 
     layer.register_backward_hook(partial(hook_fn, in_grads, out_grads))
@@ -43,8 +53,8 @@ def get_gradients_from_layer(net, x, y, layer_name=None, normalize=False):
     grad = out_grads[0]
     if normalize:
         max_grad = np.max(np.abs(grad))
-        if max_grad>10**(-12):
-            grad /= max_grad 
+        if max_grad > 10**(-12):
+            grad /= max_grad
         else:
             grad = np.zeros(np.shape(grad))
 

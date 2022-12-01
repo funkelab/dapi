@@ -1,5 +1,4 @@
 from dapi.utils import image_to_tensor
-import copy
 import cv2
 import numpy as np
 import torch.nn.functional as F
@@ -15,6 +14,49 @@ def run_inference(classifier, im):
     return class_probs
 
 
+def create_mask(
+        attribution,
+        threshold,
+        sigma=11,
+        struc=10,
+        channel_wise=False):
+
+    channels, _, _ = attribution.shape
+
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE,
+        (struc, struc))
+
+    mask_size = 0
+    mask = []
+
+    # construct mask channel by channel
+    for c in range(channels):
+
+        # threshold
+        if channel_wise:
+            channel_mask = (attribution[c, :, :] > threshold)
+        else:
+            channel_mask = np.any(attribution > threshold, axis=0)
+
+        # morphological closing
+        channel_mask = cv2.morphologyEx(
+            channel_mask.astype(np.uint8),
+            cv2.MORPH_CLOSE,
+            kernel)
+
+        mask_size += np.sum(channel_mask)
+
+        # blur
+        mask.append(
+            cv2.GaussianBlur(
+                channel_mask.astype(np.float32),
+                (sigma, sigma),
+                0))
+
+    return np.array(mask), mask_size
+
+
 def get_mask(
         attribution,
         real_img,
@@ -24,12 +66,11 @@ def get_mask(
         classifier,
         sigma=11,
         struc=10,
-        channel_wise=False):
-    """
-    attribution: 2D array <= 1 indicating pixel importance
-    """
+        channel_wise=False,
+        num_thresholds=200):
 
-    channels, _, _ = real_img.shape
+    # copy parts of "real" into "fake", see how much the classification of
+    # "fake" changes into "real_class"
 
     result_dict = {}
     img_names = [
@@ -43,89 +84,48 @@ def get_mask(
         "mask_weight"]
     imgs_all = []
 
-    a_min = -1
-    a_max = 1
-    steps = 200
-    a_range = a_max - a_min
-    step = a_range/float(steps)
-    for k in range(0, steps + 1):
-        thr = a_min + k * step
+    num_thresholds = 200
 
-        # This is inefficient, can be fixed when using nD smoothing functions.
-        mask_weight_full = np.zeros(np.shape(real_img))
-        copyto_full = np.zeros(np.shape(real_img))
-        copied_canvas_full = np.zeros(np.shape(real_img))
-        copied_canvas_to_full = np.zeros(np.shape(real_img))
+    classification_fake = run_inference(classifier, fake_img)[0]
 
-        mask_size = 0
-        for c in range(channels):
-            copyfrom = copy.deepcopy(real_img[c, :, :])
-            copyto = copy.deepcopy(fake_img[c, :, :])
-            copyto_ref = copy.deepcopy(fake_img[c, :, :])
-            copied_canvas = np.zeros(np.shape(copyfrom))
-            if channel_wise:
-                mask = np.array(
-                    attribution[c, :, :] > thr,
-                    dtype=np.uint8)
-            else:
-                mask = np.array(
-                    np.any(attribution > thr, axis=0),
-                    dtype=np.uint8)
+    for threshold in np.arange(-1.0, 1.0, 2.0/num_thresholds):
 
-            kernel = cv2.getStructuringElement(
-                cv2.MORPH_ELLIPSE,
-                (struc, struc))
-            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-            # Mask size should be counted individually for each channel.
-            mask_size += np.sum(mask)
-            mask_cp = copy.deepcopy(mask)
+        # soft mask of the parts to copy
+        mask, mask_size = create_mask(
+            attribution,
+            threshold,
+            sigma,
+            struc,
+            channel_wise)
 
-            mask_weight = cv2.GaussianBlur(
-                mask_cp.astype(np.float),
-                (sigma, sigma),
-                0)
-            copyto = np.array(
-                (copyto * (1 - mask_weight)) + (copyfrom * mask_weight),
-                dtype=np.float)
+        real_masked = real_img * mask
+        fake_masked = fake_img * mask
+        diff_img = real_masked - fake_masked
 
-            copied_canvas += np.array(mask_weight*copyfrom)
-            copied_canvas_to = np.zeros(np.shape(copyfrom))
-            copied_canvas_to += np.array(mask_weight*copyto_ref)
+        # hybrid = real parts copied to fake
+        hybrid_img = real_img * mask + fake_img * (1.0 - mask)
 
-            mask_weight_full[c, :, :] = mask_weight
-            copyto_full[c, :, :] = copyto
-            copied_canvas_full[c, :, :] = copied_canvas
-            copied_canvas_to_full[c, :, :] = copied_canvas_to
-
-        mask_weight = mask_weight_full
-        copyto = copyto_full
-        copied_canvas = copied_canvas_full
-        copied_canvas_to = copied_canvas_to_full
-
-        diff_copied = copied_canvas - copied_canvas_to
-
-        fake_img_norm = copy.deepcopy(fake_img).astype(np.float32)
-        out_fake = run_inference(classifier, fake_img_norm)
-
-        real_img_norm = copy.deepcopy(real_img).astype(np.float32)
-
-        im_copied_norm = copy.deepcopy(copyto).astype(np.float32)
-        out_copyto = run_inference(classifier, im_copied_norm)
+        classification_hybrid = run_inference(classifier, hybrid_img)[0]
 
         imgs = [
             attribution,
-            real_img_norm,
-            fake_img_norm,
-            im_copied_norm,
-            copied_canvas,
-            copied_canvas_to,
-            diff_copied,
-            mask_weight
+            real_img,
+            fake_img,
+            hybrid_img,
+            real_masked,
+            fake_masked,
+            diff_img,
+            mask
         ]
 
         imgs_all.append(imgs)
 
-        mrf_score = out_copyto[0][real_class] - out_fake[0][real_class]
-        result_dict[thr] = [float(mrf_score.detach().cpu().numpy()), mask_size]
+        score_change = (
+            classification_hybrid[real_class] -
+            classification_fake[real_class])
+        result_dict[threshold] = [
+            float(score_change.detach().cpu().numpy()),
+            mask_size
+        ]
 
     return result_dict, img_names, imgs_all

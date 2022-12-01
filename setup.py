@@ -6,7 +6,4 @@ setup(
     description='dapi',
     url='https://github.com/funkelab/dapi',
     author='Nils Eckstein',
-    packages=[
-        'dapi',
-        'dapi_networks'
-        ])
+    packages=['dapi'])

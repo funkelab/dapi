@@ -47,11 +47,11 @@ def get_attribution(real_img,
         methods: (list of str or 'all')
 
             List of attribution methods to run. Possible values are: "ig"
-            (Integrated Gradients), "grads" (just gradients), "gc" (GradCam),
-            "ggc" (Guided GradCam), "dl" (DeepLift), "ingrad" (Input x
-            Gradient), "random" (random attribution as a baseline), and
-            "residual" (pixel-wise difference). If set to 'all' (the default),
-            all of the above methods will be run.
+            (Integrated Gradients), "gc" (GradCam), "ggc" (Guided GradCam),
+            "dl" (DeepLift), "ingrad" (Input x Gradient), "random" (random
+            attribution as a baseline), and "residual" (pixel-wise difference).
+            If set to 'all' (the default), all of the above methods will be
+            run.
 
         bidirectional: (bool)
 
@@ -75,13 +75,13 @@ def get_attribution(real_img,
     attrs = []
     attrs_names = []
 
-    if "residual" in methods:
+    if "residual" in methods or methods == 'all':
         res = np.abs(real_img - fake_img)
         res = res - np.min(res)
         attrs.append(torch.tensor(res/np.max(res)))
         attrs_names.append("residual")
 
-    if "random" in methods:
+    if "random" in methods or methods == 'all':
         rand = np.abs(np.random.randn(*np.shape(real_img)))
         rand = np.abs(scipy.ndimage.filters.gaussian_filter(rand, 4))
         rand = rand - np.min(rand)
@@ -89,7 +89,7 @@ def get_attribution(real_img,
         attrs.append(torch.tensor(rand))
         attrs_names.append("random")
 
-    if "gc" in methods:
+    if "gc" in methods or methods == 'all':
         classifier.zero_grad()
         last_conv_layer = [
             (name, module)
@@ -132,7 +132,7 @@ def get_attribution(real_img,
             attrs.append(gc_diff_1)
             attrs_names.append("d_gc_inv")
 
-    if "ggc" in methods:
+    if "ggc" in methods or methods == 'all':
         classifier.zero_grad()
         last_conv = [
             module
@@ -173,7 +173,7 @@ def get_attribution(real_img,
             attrs_names.append("d_ggc_inv")
 
     # IG
-    if "ig" in methods:
+    if "ig" in methods or methods == 'all':
         baseline = image_to_tensor(
             np.zeros(np.shape(real_img), dtype=np.float32)
         )
@@ -214,7 +214,7 @@ def get_attribution(real_img,
             attrs_names.append("d_ig_inv")
 
     # DL
-    if "dl" in methods:
+    if "dl" in methods or methods == 'all':
         classifier.zero_grad()
         dl = DeepLift(classifier)
         dl_real = dl.attribute(imgs[0], target=classes[0])
@@ -239,7 +239,8 @@ def get_attribution(real_img,
             attrs_names.append("d_dl_inv")
 
     # INGRAD
-    if "ingrad" in methods:
+    if "ingrad" in methods or methods == 'all':
+
         classifier.zero_grad()
         saliency = Saliency(classifier)
         grads_real = saliency.attribute(imgs[0],

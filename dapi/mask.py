@@ -1,4 +1,4 @@
-from dapi.utils import normalize_image, image_to_tensor
+from dapi.utils import image_to_tensor
 import copy
 import cv2
 import numpy as np
@@ -104,12 +104,12 @@ def get_mask(
 
         diff_copied = copied_canvas - copied_canvas_to
 
-        fake_img_norm = normalize_image(copy.deepcopy(fake_img))
+        fake_img_norm = copy.deepcopy(fake_img).astype(np.float32)
         out_fake = run_inference(classifier, fake_img_norm)
 
-        real_img_norm = normalize_image(copy.deepcopy(real_img))
+        real_img_norm = copy.deepcopy(real_img).astype(np.float32)
 
-        im_copied_norm = normalize_image(copy.deepcopy(copyto))
+        im_copied_norm = copy.deepcopy(copyto).astype(np.float32)
         out_copyto = run_inference(classifier, im_copied_norm)
 
         imgs = [
@@ -117,9 +117,9 @@ def get_mask(
             real_img_norm,
             fake_img_norm,
             im_copied_norm,
-            normalize_image(copied_canvas),
-            normalize_image(copied_canvas_to),
-            normalize_image(diff_copied),
+            copied_canvas,
+            copied_canvas_to,
+            diff_copied,
             mask_weight
         ]
 

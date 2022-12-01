@@ -1,8 +1,18 @@
-from dapi.utils import normalize_image
-from dapi_networks import run_inference, init_network
+from dapi.utils import normalize_image, image_to_tensor
 import copy
 import cv2
 import numpy as np
+import torch.nn.functional as F
+
+
+def run_inference(classifier, im):
+    """
+    Net: network object
+    input_image: Normalized 2D input image.
+    """
+    im_tensor = image_to_tensor(im)
+    class_probs = F.softmax(classifier(im_tensor), dim=1)
+    return class_probs
 
 
 def get_mask(
@@ -11,12 +21,7 @@ def get_mask(
         fake_img,
         real_class,
         fake_class,
-        net_module,
-        checkpoint_path,
-        input_shape,
-        input_nc,
-        output_classes,
-        downsample_factors=None,
+        classifier,
         sigma=11,
         struc=10,
         channel_wise=False):
@@ -24,15 +29,8 @@ def get_mask(
     attribution: 2D array <= 1 indicating pixel importance
     """
 
-    net = init_network(
-        checkpoint_path,
-        input_shape,
-        net_module,
-        input_nc,
-        eval_net=True,
-        require_grad=False,
-        output_classes=output_classes,
-        downsample_factors=downsample_factors)
+    channels, _, _ = real_img.shape
+
     result_dict = {}
     img_names = [
         "attr",
@@ -60,7 +58,7 @@ def get_mask(
         copied_canvas_to_full = np.zeros(np.shape(real_img))
 
         mask_size = 0
-        for c in range(input_nc):
+        for c in range(channels):
             copyfrom = copy.deepcopy(real_img[c, :, :])
             copyto = copy.deepcopy(fake_img[c, :, :])
             copyto_ref = copy.deepcopy(fake_img[c, :, :])
@@ -107,12 +105,12 @@ def get_mask(
         diff_copied = copied_canvas - copied_canvas_to
 
         fake_img_norm = normalize_image(copy.deepcopy(fake_img))
-        out_fake = run_inference(net, fake_img_norm)
+        out_fake = run_inference(classifier, fake_img_norm)
 
         real_img_norm = normalize_image(copy.deepcopy(real_img))
 
         im_copied_norm = normalize_image(copy.deepcopy(copyto))
-        out_copyto = run_inference(net, im_copied_norm)
+        out_copyto = run_inference(classifier, im_copied_norm)
 
         imgs = [
             attribution,

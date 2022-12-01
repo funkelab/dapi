@@ -3,7 +3,7 @@ from captum.attr import IntegratedGradients, Saliency, DeepLift,\
                         LayerGradCam, GuidedBackprop
 from dapi.activations import project_layer_activations_to_input_rescale
 from dapi.stereo_gc import get_sgc
-from dapi.utils import normalize_image, image_to_tensor
+from dapi.utils import image_to_tensor
 import numpy as np
 import scipy
 import scipy.ndimage
@@ -62,8 +62,10 @@ def get_attribution(real_img,
     channels, height, width = real_img.shape
     input_shape = (height, width)
 
-    imgs = [image_to_tensor(normalize_image(real_img).astype(np.float32)),
-            image_to_tensor(normalize_image(fake_img).astype(np.float32))]
+    imgs = [
+        image_to_tensor(real_img.astype(np.float32)),
+        image_to_tensor(fake_img.astype(np.float32))
+    ]
 
     classes = [real_class, fake_class]
 

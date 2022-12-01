@@ -57,7 +57,7 @@ def create_mask(
     return np.array(mask), mask_size
 
 
-def get_mask(
+def get_dapi_score(
         attribution,
         real_img,
         fake_img,

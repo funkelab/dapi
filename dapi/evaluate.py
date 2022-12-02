@@ -1,3 +1,4 @@
+from .report import Report
 from dapi.utils import image_to_tensor
 import cv2
 import numpy as np
@@ -57,10 +58,10 @@ def create_mask(
     return np.array(mask), mask_size
 
 
-def get_dapi_score(
+def evaluate(
         attribution,
-        real_img,
-        fake_img,
+        real,
+        fake,
         real_class,
         fake_class,
         classifier,
@@ -72,21 +73,14 @@ def get_dapi_score(
     # copy parts of "real" into "fake", see how much the classification of
     # "fake" changes into "real_class"
 
-    result_dict = {}
-    img_names = [
-        "attr",
-        "real",
-        "fake",
-        "hybrid",
-        "mask_real",
-        "mask_fake",
-        "mask_residual",
-        "mask_weight"]
-    imgs_all = []
-
     num_thresholds = 200
 
-    classification_fake = run_inference(classifier, fake_img)[0]
+    classification_fake = run_inference(classifier, fake)[0]
+
+    report = Report(
+        attribution,
+        real,
+        fake)
 
     for threshold in np.arange(-1.0, 1.0, 2.0/num_thresholds):
 
@@ -98,34 +92,27 @@ def get_dapi_score(
             struc,
             channel_wise)
 
-        real_masked = real_img * mask
-        fake_masked = fake_img * mask
-        diff_img = real_masked - fake_masked
+        real_masked = real * mask
+        fake_masked = fake * mask
+        diff = real_masked - fake_masked
 
         # hybrid = real parts copied to fake
-        hybrid_img = real_img * mask + fake_img * (1.0 - mask)
+        hybrid = real * mask + fake * (1.0 - mask)
 
-        classification_hybrid = run_inference(classifier, hybrid_img)[0]
-
-        imgs = [
-            attribution,
-            real_img,
-            fake_img,
-            hybrid_img,
-            real_masked,
-            fake_masked,
-            diff_img,
-            mask
-        ]
-
-        imgs_all.append(imgs)
+        classification_hybrid = run_inference(classifier, hybrid)[0]
 
         score_change = (
             classification_hybrid[real_class] -
             classification_fake[real_class])
-        result_dict[threshold] = [
-            float(score_change.detach().cpu().numpy()),
-            mask_size
-        ]
 
-    return result_dict, img_names, imgs_all
+        report.add_threshold(
+            threshold,
+            mask,
+            mask_size,
+            score_change,
+            hybrid,
+            real_masked,
+            fake_masked,
+            diff)
+
+    return report
